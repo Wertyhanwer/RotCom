@@ -1,0 +1,29 @@
+services:
+  db:
+    build: ./db
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  db_test:
+    build: ./test_db
+    ports:
+      - "127.0.0.1:5434:5432"
+    profiles:
+      - test
+
+  api:
+    build: ./api
+    ports:
+      - "127.0.0.1:8001:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:3001:80"
+
+volumes:
+  db_data:

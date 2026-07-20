@@ -1,0 +1,12 @@
+.idea/
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.env
+logs/
+.pytest_cache/
+api/logs/
+api/__pycache__/
+*.sublime-project
+*.sublime-workspace

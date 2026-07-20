@@ -1,0 +1,25 @@
+1. Сущности (Entity)     → Что храним? (User, Chat, Message)
+2. Атрибуты              → Что у каждой? (id, name, content)
+3. Связи (Relationship)  → Как связаны? (1:N, N:M)
+4. Ключи (PK/FK)         → id + внешние ключи
+5. Рисуем ERD            → Draw.io / Lucidchart
+
+chatdb (PostgreSQL)
+├── users ★★★ ИЗМЕНЕНО ★★★
+│   ├── id (PK, serial)
+│   ├── username (varchar, unique)
+│   ├── email (varchar, unique) ← НОВОЕ!
+│   └── created_at (timestamp)
+│
+├── chats  
+│   ├── id (PK, serial)
+│   ├── name (varchar)
+│   ├── created_by_id (FK → users.id)
+│   └── created_at (timestamp)
+│
+└── messages
+    ├── id (PK, serial)
+    ├── content (text)
+    ├── timestamp (timestamp, default now())
+    ├── chat_id (FK → chats.id)
+    └── user_id (FK → users.id)
