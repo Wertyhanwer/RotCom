@@ -23,6 +23,8 @@ services:
       - .env
 
   frontend:
+    depends_on:
+    - api
     build: ./frontend
     ports:
       - "${FRONTEND_EXTERNAL_PORT}:80"
