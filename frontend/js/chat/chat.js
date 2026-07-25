@@ -13,21 +13,22 @@ async function loadOlderMessages() {
   if (isLoadingMessages || !currentChatId) return
   isLoadingMessages = true
 
-  const response = await fetchMessages(currentChatId, messagesOffset)
-  const oldMessages = await response.json()
+  const response = await fetchHistory(currentChatId, messagesOffset)
+  const oldItems = await response.json()
   isLoadingMessages = false
 
-  if (oldMessages.length === 0) return
+  if (oldItems.length === 0) return
   messagesOffset += 50
 
   const messagesDiv = document.querySelector('.messages')
   const scrollBefore = messagesDiv.scrollHeight
 
-  oldMessages.forEach(msg => {
-    const bubble = document.createElement('div')
-    bubble.className = `message ${msg.from_user_id === currentUserId ? 'me' : 'them'}`
-    bubble.innerHTML = `<span class="bubble">${msg.content}</span>`
-    messagesDiv.prepend(bubble)
+  // API отдаёт DESC, prepend в том же порядке → старые оказываются выше
+  oldItems.forEach(item => {
+    const el = item.event_type === 'call'
+      ? createCallEl(item)
+      : createMessageEl(item.content, item.from_user_id === currentUserId ? 'me' : 'them')
+    messagesDiv.prepend(el)
   })
 
   messagesDiv.scrollTop = messagesDiv.scrollHeight - scrollBefore
@@ -52,7 +53,7 @@ function sendMsg() {
   const textField = document.getElementById('msg-input')
   const text = textField.value.trim()
   if (!text) return
-  ws.send(JSON.stringify({ to_user_id: currentChatUserId, content: text }))
+  ws.send(JSON.stringify({ event_type: 'message', to_user_id: currentChatUserId, content: text, content_type: 'text' }))
   textField.value = ''
   addBubble(text, 'me')
   refreshChatList()
@@ -79,14 +80,13 @@ async function openChat(chatId, userId, username) {
   document.querySelector('.message-input').classList.add('visible')
   document.querySelector('.no-chat').textContent = username
 
-  const response = await fetchMessages(chatId, 0)
-  const messages = await response.json()
+  const response = await fetchHistory(chatId, 0)
+  const items = await response.json()
   const messagesDiv = document.querySelector('.messages')
   messagesDiv.innerHTML = ''
 
-  messages.forEach(msg => {
-    addBubble(msg.content, msg.from_user_id === currentUserId ? 'me' : 'them')
-  })
+  // API отдаёт DESC — разворачиваем чтобы старые были сверху
+  ;[...items].reverse().forEach(item => renderHistoryItem(item))
 }
 
 function openEmptyChat(userId, username) {

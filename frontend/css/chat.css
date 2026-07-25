@@ -151,6 +151,44 @@
   background: #5a52e0;
 }
 
+.event-call {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.call-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  background: #1e2130;
+  border: 1px solid #2e3248;
+  color: #7b809a;
+}
+
+.call-bubble.answered {
+  color: #4caf50;
+  border-color: #2a3d2a;
+}
+
+.call-bubble.missed {
+  color: #ef5350;
+  border-color: #3d2a2a;
+}
+
+.call-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.call-duration {
+  color: #7b809a;
+  font-size: 12px;
+}
+
 .empty-chat-hint {
   margin: auto;
   padding: 8px 16px;

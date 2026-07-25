@@ -1,21 +1,66 @@
-function addBubble(text, side) {
+function createMessageEl(content, side) {
+  const el = document.createElement('div')
+  el.className = `message ${side}`
+  el.innerHTML = `<span class="bubble">${content}</span>`
+  return el
+}
+
+function createCallEl(item) {
+  const isOutgoing = item.caller_id === currentUserId
+  const answered = item.status === 'answered'
+
+  const icon = answered ? '📞' : '📵'
+  let label
+  if (answered) {
+    label = isOutgoing ? 'Исходящий звонок' : 'Входящий звонок'
+  } else {
+    label = isOutgoing ? 'Отменённый звонок' : 'Пропущенный звонок'
+  }
+
+  const duration = answered && item.duration
+    ? `<span class="call-duration">· ${formatDuration(item.duration)}</span>`
+    : ''
+
+  const el = document.createElement('div')
+  el.className = 'event-call'
+  el.innerHTML = `
+    <div class="call-bubble ${answered ? 'answered' : 'missed'}">
+      <span class="call-icon">${icon}</span>
+      <span>${label}</span>
+      ${duration}
+    </div>
+  `
+  return el
+}
+
+function formatDuration(seconds) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function renderHistoryItem(item) {
   const messagesDiv = document.querySelector('.messages')
   const wasAtBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop <= messagesDiv.clientHeight + 50
 
-  const bubble = document.createElement('div')
-  bubble.className = `message ${side}`
-  bubble.innerHTML = `<span class="bubble">${text}</span>`
-  messagesDiv.appendChild(bubble)
+  let el
+  if (item.event_type === 'call') {
+    el = createCallEl(item)
+  } else {
+    const side = item.from_user_id === currentUserId ? 'me' : 'them'
+    el = createMessageEl(item.content, side)
+  }
 
+  messagesDiv.appendChild(el)
   if (wasAtBottom) messagesDiv.scrollTop = messagesDiv.scrollHeight
 }
 
-function updateChatPreview(fromUserId, content) {
-  document.querySelectorAll('.chat-item').forEach(item => {
-    if (item.dataset.userId == fromUserId) {
-      item.querySelector('.chat-item-last').textContent = content
-    }
-  })
+function addBubble(text, side) {
+  const messagesDiv = document.querySelector('.messages')
+  const wasAtBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop <= messagesDiv.clientHeight + 50
+  const el = createMessageEl(text, side)
+  messagesDiv.appendChild(el)
+  if (wasAtBottom) messagesDiv.scrollTop = messagesDiv.scrollHeight
 }
 
 function renderChatItem(chat) {

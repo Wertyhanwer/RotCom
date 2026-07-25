@@ -11,18 +11,25 @@ function wsConnect() {
       return
     }
 
-    if (msg.from_user_id !== currentChatUserId) {
+    const senderId = msg.event_type === 'call' ? msg.caller_id : msg.from_user_id
+
+    if (senderId !== currentChatUserId) {
       refreshChatList()
       return
     }
 
-    if (msg.from_user_id === currentUserId) return
+    if (senderId === currentUserId) return
 
     if (currentChatId === null) {
       document.querySelector('.messages').innerHTML = ''
     }
 
-    addBubble(msg.content, 'them')
+    if (msg.event_type === 'call') {
+      renderHistoryItem(msg)
+    } else {
+      addBubble(msg.content, 'them')
+    }
+
     refreshChatList()
   }
 
