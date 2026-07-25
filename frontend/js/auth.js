@@ -32,7 +32,7 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
 
   if (response.ok) {
     localStorage.setItem('token', data.access_token)
-    window.location.href = 'chat.html'
+    window.location.href = '/chat'
   } else {
     console.log('Ошибка:', data.detail)
   }

@@ -101,7 +101,7 @@ async function init() {
 
   if (!meResponse.ok) {
     localStorage.removeItem('token')
-    window.location.href = 'auth.html'
+    window.location.href = '/auth'
     return
   }
 
@@ -118,7 +118,7 @@ async function init() {
 }
 
 if (!localStorage.getItem('token')) {
-  window.location.replace('auth.html')
+  window.location.replace('/auth')
 } else {
   init()
   bindEvents()

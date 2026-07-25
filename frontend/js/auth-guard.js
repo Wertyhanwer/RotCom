@@ -1,5 +1,5 @@
 if (localStorage.getItem('token')) {
-  window.location.replace('chat.html')
+  window.location.replace('/chat')
 } else {
-  window.location.replace('auth.html')
+  window.location.replace('/auth')
 }
