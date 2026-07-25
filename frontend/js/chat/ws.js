@@ -13,12 +13,12 @@ function wsConnect() {
 
     const senderId = msg.event_type === 'call' ? msg.caller_id : msg.from_user_id
 
-    if (senderId !== currentChatUserId) {
+    if (Number(senderId) !== Number(currentChatUserId)) {
       refreshChatList()
       return
     }
 
-    if (senderId === currentUserId) return
+    if (Number(senderId) === Number(currentUserId)) return
 
     if (currentChatId === null) {
       document.querySelector('.messages').innerHTML = ''
