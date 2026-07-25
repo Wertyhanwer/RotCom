@@ -91,12 +91,16 @@ async function openChat(chatId, userId, username) {
   document.querySelector('.no-chat').textContent = username
 
   const response = await fetchHistory(chatId, 0)
-  const items = await response.json()
   const messagesDiv = document.querySelector('.messages')
   messagesDiv.innerHTML = ''
 
-  // API отдаёт DESC — разворачиваем чтобы старые были сверху
-  ;[...items].reverse().forEach(item => renderHistoryItem(item))
+  if (response.ok) {
+    const items = await response.json()
+    // API отдаёт DESC — разворачиваем чтобы старые были сверху
+    if (Array.isArray(items)) {
+      ;[...items].reverse().forEach(item => renderHistoryItem(item))
+    }
+  }
 }
 
 function openEmptyChat(userId, username) {
