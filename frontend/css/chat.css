@@ -14,6 +14,32 @@
 .sidebar-header {
   padding: 20px;
   border-bottom: 1px solid #2e3248;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sidebar-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.btn-logout {
+  background: none;
+  border: none;
+  color: #7b809a;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: color 0.2s;
+}
+
+.btn-logout:hover {
+  color: #ef5350;
 }
 
 .chat-list {

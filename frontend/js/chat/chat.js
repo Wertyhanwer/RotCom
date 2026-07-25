@@ -59,7 +59,17 @@ function sendMsg() {
   refreshChatList()
 }
 
+async function logout() {
+  // POST ${API}/auth/logout  ← раскомментить когда бэк будет готов
+  // await fetch(`${API}/auth/logout`, { method: 'POST', headers: authHeaders() })
+
+  if (ws) ws.close()
+  localStorage.removeItem('token')
+  window.location.replace('/auth')
+}
+
 function bindEvents() {
+  document.getElementById('logout-btn').addEventListener('click', logout)
   document.getElementById('msg-send').addEventListener('click', sendMsg)
   document.getElementById('search-btn').addEventListener('click', searchUser)
   document.getElementById('msg-input').addEventListener('keydown', (e) => {
