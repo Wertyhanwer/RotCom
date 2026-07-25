@@ -1,3 +1,14 @@
+async function refreshChatList() {
+  const response = await fetchChats()
+  chats = await response.json()
+
+  const chatList = document.getElementById('chat-list')
+  chatList.innerHTML = ''
+  for (const chat of chats) {
+    chatList.appendChild(renderChatItem(chat))
+  }
+}
+
 async function loadOlderMessages() {
   if (isLoadingMessages || !currentChatId) return
   isLoadingMessages = true
@@ -44,6 +55,7 @@ function sendMsg() {
   ws.send(JSON.stringify({ to_user_id: currentChatUserId, content: text }))
   textField.value = ''
   addBubble(text, 'me')
+  refreshChatList()
 }
 
 function bindEvents() {

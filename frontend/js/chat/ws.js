@@ -12,7 +12,7 @@ function wsConnect() {
     }
 
     if (msg.from_user_id !== currentChatUserId) {
-      updateChatPreview(msg.from_user_id, msg.content)
+      refreshChatList()
       return
     }
 
@@ -23,10 +23,7 @@ function wsConnect() {
     }
 
     addBubble(msg.content, 'them')
-
-    if (currentChatId === null) {
-      setTimeout(refreshChatList, 500)
-    }
+    refreshChatList()
   }
 
   ws.onclose = () => console.log('WS отключён')
