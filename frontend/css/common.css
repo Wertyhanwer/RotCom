@@ -1,0 +1,39 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  background: #222536;
+  border: 1px solid #2e3248;
+  border-radius: 8px;
+  color: #e2e4f0;
+  font-size: 14px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #6c63ff;
+}
+
+.btn-primary {
+  padding: 10px;
+  background: #6c63ff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: #5a52e0;
+}
+
+h1 {
+  color: #6c63ff;
+}

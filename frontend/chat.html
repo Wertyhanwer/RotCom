@@ -3,9 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RotCom</title> 
-    <script src="config.js"></script>
-    <link rel="stylesheet" href="style.css" />
+    <title>RotCom</title>
+    <script src="js/config.js"></script>
+    <link rel="stylesheet" href="css/common.css" />
+    <link rel="stylesheet" href="css/chat.css" />
   </head>
   <body>
     <div class="layout">
@@ -17,245 +18,23 @@
             <button class="btn-primary" id="search-btn">Найти</button>
           </div>
         </div>
-        <div class="chat-list" id="chat-list">
-        </div>
+        <div class="chat-list" id="chat-list"></div>
       </div>
-
       <div class="main">
         <div class="main-header">
           <p class="no-chat">Выберите чат</p>
         </div>
-        <div class="messages">
-
-        </div>
+        <div class="messages"></div>
         <div class="message-input">
           <input class="input" type="text" id="msg-input" placeholder="Сообщение..." />
           <button class="btn-send" id="msg-send">➤</button>
         </div>
       </div>
     </div>
-    <script>
-      if (!localStorage.getItem('token')) {
-          window.location.replace('auth.html')
-      }
-      const token = localStorage.getItem('token')
-      let currentUserId = null
-      let ws = null
-      let currentChatUserId = null
-
-      let currentChatId = null
-      let messagesOffset = 0
-      let isLoadingMessages = false
-      let chats = []
-
-      async function loadOlderMessages() {
-        if (isLoadingMessages || !currentChatId) return
-        isLoadingMessages = true
-
-        const response = await fetch(`${API}/chats/private/${currentChatId}/messages?limit=50&offset=${messagesOffset}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        const oldMessages = await response.json()
-        isLoadingMessages = false
-
-        if (oldMessages.length === 0) return
-        messagesOffset += 50
-
-        const messagesDiv = document.querySelector('.messages')
-        const scrollBefore = messagesDiv.scrollHeight
-
-        oldMessages.forEach(msg => {
-          const bubble = document.createElement('div')
-          bubble.className = `message ${msg.from_user_id === currentUserId ? 'me' : 'them'}`
-          bubble.innerHTML = `<span class="bubble">${msg.content}</span>`
-          messagesDiv.prepend(bubble)
-        })
-
-        messagesDiv.scrollTop = messagesDiv.scrollHeight - scrollBefore
-      }
-
-      async function searchUser(){
-        const searchField = document.getElementById(`search-input`)
-        const text = searchField.value
-        const response = await fetch(`/api/users/search?login=${text}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-
-        if (!response.ok) {
-          //серануть что юзер не найден
-          return
-        }
-        const foundUser = await response.json()
-        const foundChat = chats.find(c => c.other_user.id_ === foundUser.id_)
-
-        if (!foundChat){
-          openEmptyChat(foundUser[`id_`], foundUser[`username`])
-          return
-        }
-        else{
-          openChat(foundChat[`id_`],foundUser[`id_`], foundUser[`username`])
-          return
-        }
-      }
-
-      function addBubble(text, side) {
-
-        const messagesDiv = document.querySelector('.messages')
-        const wasAtBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop <= messagesDiv.clientHeight + 50
-
-        const bubble = document.createElement('div')
-        bubble.className = `message ${side}`
-        bubble.innerHTML = `<span class="bubble">${text}</span>`
-        messagesDiv.appendChild(bubble)
-
-        if (wasAtBottom) {
-          messagesDiv.scrollTop = messagesDiv.scrollHeight
-        }
-      }
-
-      function bindEvents() {
-        document.getElementById('msg-send').addEventListener('click', sendMsg)
-        document.getElementById('search-btn').addEventListener('click', searchUser)
-        document.getElementById('msg-input').addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault()
-            sendMsg()
-          }
-        })
-        document.querySelector('.messages').addEventListener('scroll', (e) => {
-          if (e.target.scrollTop === 0) loadOlderMessages()
-        })
-      }
-
-      async function sendMsg(){
-        const text_field = document.getElementById('msg-input')
-        const text = text_field.value.trim()
-        if (!text) return
-        ws.send(JSON.stringify({ to_user_id: currentChatUserId, content: text }))
-        text_field.value = ""
-        addBubble(text, 'me')
-      }
-
-
-
-      function updateChatPreview(fromUserId, content) {
-        const items = document.querySelectorAll('.chat-item')
-        items.forEach(item => {
-          if (item.dataset.userId == fromUserId) {
-            item.querySelector('.chat-item-last').textContent = content
-          }
-        })
-      }
-
-      function wsConnect(){
-        ws = new WebSocket(`ws://${location.host}/ws/?token=${token}`)
-
-
-        ws.onopen = () => console.log('WS подключён')
-        
-        ws.onmessage = (event) => {
-          const msg = JSON.parse(event.data)
-          if (msg.error) {
-            console.log('WS ошибка:', msg.error)
-            return
-          }
-
-          if (msg.from_user_id !== currentChatUserId){
-            updateChatPreview(msg.from_user_id, msg.content)
-            return
-          }
-          if (msg.from_user_id === currentUserId) return
-            
-          if (currentChatId === null) {
-            document.querySelector('.messages').innerHTML = ''
-          }
-
-          addBubble(msg.content, 'them')
-
-          if (currentChatId === null) {
-            setTimeout(refreshChatList, 500)
-          }
-        }
-
-        ws.onclose = () => console.log('WS отключён')
-      }
-
-      async function openChat(chatId, userId, username) {
-        currentChatUserId = userId
-        currentChatId = chatId
-        messagesOffset = 50
-        document.querySelector('.message-input').classList.add('visible')
-        document.querySelector('.no-chat').textContent = username
-        const response = await fetch(`${API}/chats/private/${chatId}/messages?limit=50&offset=0`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-
-        const messages = await response.json()
-        const messagesDiv = document.querySelector('.messages')
-        messagesDiv.innerHTML = ''
-
-        messages.forEach(msg => {
-          addBubble(msg.content, msg.from_user_id === currentUserId ? 'me' : 'them')
-        })
-      }
-
-      function openEmptyChat(userId, username) {
-        currentChatUserId = userId
-        document.querySelector('.message-input').classList.add('visible')
-        document.querySelector('.no-chat').textContent = username
-
-        const messagesDiv = document.querySelector('.messages')
-        messagesDiv.innerHTML = '<div class="empty-chat-hint">Нет сообщений. Напишите первым!</div>'
-        
-      }
-
-      async function init() {
-        const meResponse = await fetch(`${API}/users/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-
-        if (!meResponse.ok) {
-          localStorage.removeItem('token')
-          window.location.href = 'auth.html'
-        }
-
-        const me = await meResponse.json()
-        currentUserId = me.id_
-        console.log(me)
-
-        const chatsResponse = await fetch(`${API}/chats/private/`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-
-        chats = await chatsResponse.json()
-        console.log(chats)
-
-        const chatList = document.getElementById('chat-list')
-        console.log(chats)
-        for (const chat of chats) {
-          const item = document.createElement('div')
-          item.className = 'chat-item'
-          item.innerHTML = `
-            <span class="chat-item-name">${chat.other_user.username}</span>
-            <span class="chat-item-last">${chat.last_message || 'Нет сообщений'}</span>
-          `
-          item.dataset.userId = chat.other_user.id_
-          item.addEventListener('click', () => {
-            openChat(chat.id_, chat.other_user.id_, chat.other_user.username)
-          })
-
-          chatList.appendChild(item)
-
-
-
-
-        }
-
-      }
-
-      init()
-      bindEvents()
-      wsConnect()
-    </script>
+    <script src="js/chat/state.js"></script>
+    <script src="js/chat/api.js"></script>
+    <script src="js/chat/ui.js"></script>
+    <script src="js/chat/ws.js"></script>
+    <script src="js/chat/chat.js"></script>
   </body>
 </html>
