@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RotCom</title> 
     <script src="config.js"></script>
-    <script src="auth-guard.js"></script>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -36,6 +35,9 @@
       </div>
     </div>
     <script>
+      if (!localStorage.getItem('token')) {
+          window.location.replace('auth.html')
+      }
       const token = localStorage.getItem('token')
       let currentUserId = null
       let ws = null
@@ -44,7 +46,7 @@
       let currentChatId = null
       let messagesOffset = 0
       let isLoadingMessages = false
-
+      let chats = []
 
       async function loadOlderMessages() {
         if (isLoadingMessages || !currentChatId) return
@@ -72,7 +74,32 @@
         messagesDiv.scrollTop = messagesDiv.scrollHeight - scrollBefore
       }
 
+      async function searchUser(){
+        const searchField = document.getElementById(`search-input`)
+        const text = searchField.value
+        const response = await fetch(`/api/users/search?login=${text}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+
+        if (!response.ok) {
+          //серануть что юзер не найден
+          return
+        }
+        const foundUser = await response.json()
+        const foundChat = chats.find(c => c.other_user.id_ === foundUser.id_)
+
+        if (!foundChat){
+          openEmptyChat(foundUser[`id_`], foundUser[`username`])
+          return
+        }
+        else{
+          openChat(foundChat[`id_`],foundUser[`id_`], foundUser[`username`])
+          return
+        }
+      }
+
       function addBubble(text, side) {
+
         const messagesDiv = document.querySelector('.messages')
         const wasAtBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop <= messagesDiv.clientHeight + 50
 
@@ -88,7 +115,7 @@
 
       function bindEvents() {
         document.getElementById('msg-send').addEventListener('click', sendMsg)
-       // document.getElementById('search-btn').addEventListener('click', searchUser)
+        document.getElementById('search-btn').addEventListener('click', searchUser)
         document.getElementById('msg-input').addEventListener('keydown', (e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
@@ -121,10 +148,11 @@
       }
 
       function wsConnect(){
-        ws = new WebSocket(`ws://127.0.0.1:8000/ws/?token=${token}`)
+        ws = new WebSocket(`ws://${location.host}/ws/?token=${token}`)
+
 
         ws.onopen = () => console.log('WS подключён')
-
+        
         ws.onmessage = (event) => {
           const msg = JSON.parse(event.data)
           if (msg.error) {
@@ -136,10 +164,19 @@
             updateChatPreview(msg.from_user_id, msg.content)
             return
           }
+          if (msg.from_user_id === currentUserId) return
+            
+          if (currentChatId === null) {
+            document.querySelector('.messages').innerHTML = ''
+          }
 
           addBubble(msg.content, 'them')
+
+          if (currentChatId === null) {
+            setTimeout(refreshChatList, 500)
+          }
         }
-          
+
         ws.onclose = () => console.log('WS отключён')
       }
 
@@ -153,13 +190,23 @@
             headers: { 'Authorization': `Bearer ${token}` }
           })
 
-          const messages = await response.json()
-          const messagesDiv = document.querySelector('.messages')
-          messagesDiv.innerHTML = ''
+        const messages = await response.json()
+        const messagesDiv = document.querySelector('.messages')
+        messagesDiv.innerHTML = ''
 
-          messages.forEach(msg => {
-            addBubble(msg.content, msg.from_user_id === currentUserId ? 'me' : 'them')
-          })
+        messages.forEach(msg => {
+          addBubble(msg.content, msg.from_user_id === currentUserId ? 'me' : 'them')
+        })
+      }
+
+      function openEmptyChat(userId, username) {
+        currentChatUserId = userId
+        document.querySelector('.message-input').classList.add('visible')
+        document.querySelector('.no-chat').textContent = username
+
+        const messagesDiv = document.querySelector('.messages')
+        messagesDiv.innerHTML = '<div class="empty-chat-hint">Нет сообщений. Напишите первым!</div>'
+        
       }
 
       async function init() {
@@ -180,7 +227,7 @@
           headers: { 'Authorization': `Bearer ${token}` }
         })
 
-        const chats = await chatsResponse.json()
+        chats = await chatsResponse.json()
         console.log(chats)
 
         const chatList = document.getElementById('chat-list')
@@ -199,10 +246,11 @@
 
           chatList.appendChild(item)
 
-          
+
+
 
         }
-      
+
       }
 
       init()
