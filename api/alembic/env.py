@@ -23,6 +23,7 @@ if config.config_file_name is not None:
 from db.models.user import User
 from db.models.private_chat import PrivateChat
 from db.models.message import Message
+from db.models.call import Call
 
 from db.models.base import Base
 target_metadata = Base.metadata

@@ -1,7 +1,7 @@
 from logger.logger_config import setup_logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import users_router, registration_router, loging_router, private_chats_router
+from routers import users_router, registration_router, loging_router, private_chats_router, calls_router
 from ws import ws_chat_router
 
 setup_logging()
@@ -19,3 +19,4 @@ app.include_router(registration_router)
 app.include_router(loging_router)
 app.include_router(private_chats_router)
 app.include_router(ws_chat_router)
+app.include_router(calls_router)
