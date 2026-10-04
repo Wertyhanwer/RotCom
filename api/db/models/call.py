@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, Enum, TIMESTAMP, ForeignKey
 from sqlalchemy.sql import func
 
-from base import Base
+from db.models.base import Base
 
 
 class CallStatus(enum.Enum):
