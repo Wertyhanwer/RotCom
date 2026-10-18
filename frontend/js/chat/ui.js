@@ -1,7 +1,10 @@
 function createMessageEl(content, side) {
   const el = document.createElement('div')
   el.className = `message ${side}`
-  el.innerHTML = `<span class="bubble">${content}</span>`
+  const bubble = document.createElement('span')
+  bubble.className = 'bubble'
+  bubble.textContent = content
+  el.appendChild(bubble)
   return el
 }
 
@@ -66,10 +69,15 @@ function addBubble(text, side) {
 function renderChatItem(chat) {
   const item = document.createElement('div')
   item.className = 'chat-item'
-  item.innerHTML = `
-    <span class="chat-item-name">${chat.other_user.username}</span>
-    <span class="chat-item-last">${chat.last_message || 'Нет сообщений'}</span>
-  `
+  const name = document.createElement('span')
+  name.className = 'chat-item-name'
+  name.textContent = chat.other_user.username
+
+  const last = document.createElement('span')
+  last.className = 'chat-item-last'
+  last.textContent = chat.last_message || 'Нет сообщений'
+
+  item.append(name, last)
   item.dataset.userId = chat.other_user.id_
   item.addEventListener('click', () => {
     openChat(chat.id_, chat.other_user.id_, chat.other_user.username)
