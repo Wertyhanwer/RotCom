@@ -1,3 +1,8 @@
-SECRET_KEY = "7f4b2d9c6a1e4f8a91c3d0e5b7f2a6c8d4e9f1a3b6c8d2e7f0a5c9b1d3e6f8a2"
+import os
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY is not set")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
