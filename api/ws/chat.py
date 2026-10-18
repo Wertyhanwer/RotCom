@@ -47,28 +47,36 @@ async def chat(websocket: WebSocket, token: str):
                 await websocket.send_text(json.dumps({"error": "invalid message format"}))
                 continue
 
-            async with get_session() as session:
-                user_rep = UserRepository(session)
-                private_chat_rep = PrivateChatRepository(session)
+            try:
+                async with get_session() as session:
+                    user_rep = UserRepository(session)
+                    private_chat_rep = PrivateChatRepository(session)
 
-                other_user = await user_rep.get_by_id(event.to_user_id)
-                if not other_user:
-                    await websocket.send_text(json.dumps({"error": "user not found"}))
-                    continue
+                    other_user = await user_rep.get_by_id(event.to_user_id)
+                    if not other_user:
+                        await websocket.send_text(json.dumps({"error": "user not found"}))
+                        continue
 
-                private_chat = await private_chat_rep.get_by_users(current_user, other_user)
-                if not private_chat:
-                    private_chat = await private_chat_rep.create(current_user, other_user)
+                    private_chat = await private_chat_rep.get_by_users(current_user, other_user)
+                    if not private_chat:
+                        private_chat = await private_chat_rep.create(current_user, other_user)
 
-                if event.event_type == "message":
-                    message_rep = MessageRepository(session)
-                    await message_rep.create(private_chat.id_, current_user.id_, event.content)
+                    if event.event_type == "message":
+                        message_rep = MessageRepository(session)
+                        await message_rep.create(private_chat.id_, current_user.id_, event.content)
 
-                elif event.event_type == "call":
-                    call_rep = CallRepository(session)
-                    await call_rep.create(private_chat.id_, current_user.id_, event.status, event.duration)
+                    elif event.event_type == "call":
+                        call_rep = CallRepository(session)
+                        await call_rep.create(private_chat.id_, current_user.id_, event.status, event.duration)
+            except Exception:
+                logger.exception(f"Ws event handling failed: user_id={current_user_id}")
+                await websocket.send_text(json.dumps({"error": "internal error"}))
+                continue
 
-            payload = json.dumps({"from_user_id": current_user.id_, **event.model_dump(exclude={"to_user_id"})})
-            await connection_manager.send_to(event.to_user_id, payload)
+            payload = json.dumps({"from_user_id": current_user.id_, **event.model_dump(mode="json", exclude={"to_user_id"})})
+            try:
+                await connection_manager.send_to(event.to_user_id, payload)
+            except Exception:
+                logger.warning(f"Ws delivery failed: from={current_user_id} to={event.to_user_id}")
     finally:
         connection_manager.disconnect(current_user.id_)

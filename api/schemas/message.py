@@ -1,12 +1,14 @@
-from typing import Literal
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated, Literal
+from pydantic import BaseModel, ConfigDict, StringConstraints
 from datetime import datetime
+
+MessageText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
 
 
 class MessageEvent(BaseModel):
     event_type: Literal["message"]
     to_user_id: int
-    content: str
+    content: MessageText
     content_type: str
 
 
