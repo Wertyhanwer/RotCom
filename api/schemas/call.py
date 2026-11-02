@@ -1,23 +1,26 @@
+import enum
 from typing import Literal
-from pydantic import BaseModel, ConfigDict
-from datetime import datetime
+from pydantic import Field, NonNegativeInt
 
-from db.models.call import CallStatus
+from schemas.chat_event import BaseEvent, BaseEventResponse
 
 
-class CallEvent(BaseModel):
+class CallStatus(enum.Enum):
+    answered = "answered"
+    missed = "missed"
+
+
+class CallEvent(BaseEvent):
     event_type: Literal["call"]
-    to_user_id: int
     status: CallStatus
-    duration: int
+    duration: NonNegativeInt
+
+    def preview(self) -> str:
+        return "📞 Звонок" if self.status == CallStatus.answered else "📵 Пропущенный звонок"
 
 
-class CallResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class CallResponse(BaseEventResponse):
     event_type: Literal["call"] = "call"
-    id_: int
-    chat_id: int
-    caller_id: int
+    caller_id: int = Field(validation_alias="sender_id")
     status: CallStatus
     duration: int
-    created_at: datetime

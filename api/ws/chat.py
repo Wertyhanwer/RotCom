@@ -4,14 +4,14 @@ from pydantic import TypeAdapter
 import logging
 
 from schemas.ws_event import WsEvent
+from schemas.chat_history import history_item_adapter
 
-from db.repository.message_repository import MessageRepository
-from db.repository.call_repository import CallRepository
 from routers.service.JWT.token_decode import decode_token
 from routers.service.JWT.token_payload_model import TokenPayloadModel
 from db.repository.private_chat_repository import PrivateChatRepository
 from db.repository.user_repository import UserRepository
-from dependencies.db import get_session
+from dependencies.db import get_session, get_mongo_db
+from services.chat_events import save_chat_event
 from .connection_manager import connection_manager
 
 router = APIRouter(prefix="/ws", tags=["ws"])
@@ -61,19 +61,14 @@ async def chat(websocket: WebSocket, token: str):
                     if not private_chat:
                         private_chat = await private_chat_rep.create(current_user, other_user)
 
-                    if event.event_type == "message":
-                        message_rep = MessageRepository(session)
-                        await message_rep.create(private_chat.id_, current_user.id_, event.content)
-
-                    elif event.event_type == "call":
-                        call_rep = CallRepository(session)
-                        await call_rep.create(private_chat.id_, current_user.id_, event.status, event.duration)
+                    document = await save_chat_event(session, get_mongo_db(), private_chat, current_user.id_, event)
             except Exception:
                 logger.exception(f"Ws event handling failed: user_id={current_user_id}")
                 await websocket.send_text(json.dumps({"error": "internal error"}))
                 continue
 
-            payload = json.dumps({"from_user_id": current_user.id_, **event.model_dump(mode="json", exclude={"to_user_id"})})
+            # получателю уходит то же, что отдаёт /history — один формат для всех типов событий
+            payload = history_item_adapter.validate_python(document).model_dump_json()
             try:
                 await connection_manager.send_to(event.to_user_id, payload)
             except Exception:

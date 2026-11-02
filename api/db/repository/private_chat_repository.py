@@ -1,7 +1,7 @@
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, case
+from sqlalchemy import select, update, func, or_, case
 
 from db.models.private_chat import PrivateChat
 from db.models.user import User
@@ -61,19 +61,32 @@ class PrivateChatRepository:
             raise DatabaseError(
                 f"Error at requesting private chats by user_id {{user_id: {user_id}, limit: {limit}, offset: {offset}}}") from e
 
-    async def update_last_event(self, chat_id: int, last_message: str):
+    async def get_by_id_for_user(self, chat_id: int, user_id: int) -> PrivateChat | None:
+        """Чат по id, только если user_id его участник — иначе None."""
+        self._logger.info(f"Private chat request {{chat_id: {chat_id}, user_id: {user_id}}}")
         try:
             private_chat_request = select(PrivateChat).where(
-                PrivateChat.id_ == chat_id
+                PrivateChat.id_ == chat_id,
+                or_(PrivateChat.user1_id == user_id, PrivateChat.user2_id == user_id)
             )
-            result = await self._session.execute(private_chat_request)
-            private_chat = result.scalar_one_or_none()
-            private_chat.last_event_at = func.now()
-            private_chat.last_message = last_message
-            await self._session.commit()
-            await self._session.refresh(private_chat)
+            private_chat = await self._session.execute(private_chat_request)
+            return private_chat.scalar_one_or_none()
         except Exception as e:
-            raise DatabaseError() from e
+            self._logger.error(f"Error at requesting private chat {{chat_id: {chat_id}, user_id: {user_id}}}: {e}")
+            raise DatabaseError(f"Error at requesting private chat {{chat_id: {chat_id}, user_id: {user_id}}}") from e
+
+    async def update_last_event(self, chat_id: int, last_message: str):
+        """Без commit — коммитит вызывающий (services/chat_events.py), чтобы откатить при ошибке записи в Mongo."""
+        self._logger.info(f"Private chat last event update request {{chat_id: {chat_id}}}")
+        try:
+            await self._session.execute(
+                update(PrivateChat)
+                .where(PrivateChat.id_ == chat_id)
+                .values(last_event_at=func.now(), last_message=last_message)
+            )
+        except Exception as e:
+            self._logger.error(f"Error at updating private chat last event {{chat_id: {chat_id}}}: {e}")
+            raise DatabaseError(f"Error at updating private chat last event {{chat_id: {chat_id}}}") from e
 
 
 
