@@ -13,12 +13,23 @@ services:
     profiles:
       - test
 
+  mongo:
+    image: mongo:8
+    ports:
+      - "${MONGO_EXTERNAL_PORT}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+
   api:
     build: ./api
     ports:
       - "${API_EXTERNAL_PORT}:8000"
     depends_on:
       - db
+      - mongo
     env_file:
       - .env
 
@@ -33,3 +44,4 @@ services:
 
 volumes:
   db_data:
+  mongo_data:
