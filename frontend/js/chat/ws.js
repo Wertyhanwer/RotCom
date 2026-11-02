@@ -22,13 +22,11 @@ function wsConnect() {
 
     if (currentChatId === null) {
       document.querySelector('.messages').innerHTML = ''
+      currentChatId = msg.chat_id
     }
 
-    if (msg.event_type === 'call') {
-      renderHistoryItem(msg)
-    } else {
-      addBubble(msg.content, 'them')
-    }
+    // WS присылает событие в том же формате, что и /history
+    renderHistoryItem(msg)
 
     refreshChatList()
   }

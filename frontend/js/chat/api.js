@@ -10,9 +10,10 @@ async function fetchChats() {
   return fetch(`${API}/chats/private/`, { headers: authHeaders() })
 }
 
-async function fetchHistory(chatId, offset = 0) {
+async function fetchHistory(chatId, before = null) {
+  const cursor = before ? `&before=${encodeURIComponent(before)}` : ''
   return fetch(
-    `${API}/chats/private/${chatId}/history?limit=50&offset=${offset}`,
+    `${API}/chats/private/${chatId}/history?limit=50${cursor}`,
     { headers: authHeaders() }
   )
 }

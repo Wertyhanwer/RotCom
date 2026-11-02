@@ -13,23 +13,18 @@ async function loadOlderMessages() {
   if (isLoadingMessages || !currentChatId) return
   isLoadingMessages = true
 
-  const response = await fetchHistory(currentChatId, messagesOffset)
-  const oldItems = await response.json()
+  const response = await fetchHistory(currentChatId, oldestEventId)
+  const oldItems = response.ok ? await response.json() : []
   isLoadingMessages = false
 
   if (oldItems.length === 0) return
-  messagesOffset += 50
+  oldestEventId = oldItems[oldItems.length - 1].id_
 
   const messagesDiv = document.querySelector('.messages')
   const scrollBefore = messagesDiv.scrollHeight
 
   // API отдаёт DESC, prepend в том же порядке → старые оказываются выше
-  oldItems.forEach(item => {
-    const el = item.event_type === 'call'
-      ? createCallEl(item)
-      : createMessageEl(item.content, item.from_user_id === currentUserId ? 'me' : 'them')
-    messagesDiv.prepend(el)
-  })
+  oldItems.forEach(item => messagesDiv.prepend(createEventEl(item)))
 
   messagesDiv.scrollTop = messagesDiv.scrollHeight - scrollBefore
 }
@@ -53,7 +48,7 @@ function sendMsg() {
   const textField = document.getElementById('msg-input')
   const text = textField.value.trim()
   if (!text) return
-  ws.send(JSON.stringify({ event_type: 'message', to_user_id: currentChatUserId, content: text, content_type: 'text' }))
+  ws.send(JSON.stringify({ event_type: 'message', to_user_id: currentChatUserId, content: text }))
   textField.value = ''
   addBubble(text, 'me')
   refreshChatList()
@@ -86,7 +81,7 @@ function bindEvents() {
 async function openChat(chatId, userId, username) {
   currentChatUserId = userId
   currentChatId = chatId
-  messagesOffset = 50
+  oldestEventId = null
   document.querySelector('.message-input').classList.add('visible')
   document.querySelector('.no-chat').textContent = username
 
@@ -99,12 +94,15 @@ async function openChat(chatId, userId, username) {
     // API отдаёт DESC — разворачиваем чтобы старые были сверху
     if (Array.isArray(items)) {
       ;[...items].reverse().forEach(item => renderHistoryItem(item))
+      if (items.length) oldestEventId = items[items.length - 1].id_
     }
   }
 }
 
 function openEmptyChat(userId, username) {
   currentChatUserId = userId
+  currentChatId = null
+  oldestEventId = null
   document.querySelector('.message-input').classList.add('visible')
   document.querySelector('.no-chat').textContent = username
   document.querySelector('.messages').innerHTML = '<div class="empty-chat-hint">Нет сообщений. Напишите первым!</div>'

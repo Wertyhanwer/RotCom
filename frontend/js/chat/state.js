@@ -3,6 +3,6 @@ let currentUserId = null
 let ws = null
 let currentChatUserId = null
 let currentChatId = null
-let messagesOffset = 0
+let oldestEventId = null  // курсор пагинации: id самого старого загруженного события
 let isLoadingMessages = false
 let chats = []

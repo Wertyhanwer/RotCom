@@ -42,18 +42,29 @@ function formatDuration(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+function createUnknownEventEl() {
+  const el = document.createElement('div')
+  el.className = 'event-call'
+  el.textContent = 'Неподдерживаемое сообщение'
+  return el
+}
+
+// новый тип события: добавить сюда функцию отрисовки
+const eventRenderers = {
+  message: item => createMessageEl(item.content, item.from_user_id === currentUserId ? 'me' : 'them'),
+  call: createCallEl,
+}
+
+function createEventEl(item) {
+  const render = eventRenderers[item.event_type]
+  return render ? render(item) : createUnknownEventEl()
+}
+
 function renderHistoryItem(item) {
   const messagesDiv = document.querySelector('.messages')
   const wasAtBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop <= messagesDiv.clientHeight + 50
 
-  let el
-  if (item.event_type === 'call') {
-    el = createCallEl(item)
-  } else {
-    const side = item.from_user_id === currentUserId ? 'me' : 'them'
-    el = createMessageEl(item.content, side)
-  }
-
+  const el = createEventEl(item)
   messagesDiv.appendChild(el)
   if (wasAtBottom) messagesDiv.scrollTop = messagesDiv.scrollHeight
 }
