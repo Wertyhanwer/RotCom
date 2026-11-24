@@ -52,6 +52,7 @@ def _server_env() -> dict:
         # короткий таймаут, чтобы тест «нет auth-сообщения» не ждал 10 секунд
         "WS_AUTH_TIMEOUT": "1",
         "REDIS_URL": REDIS_URL,
+        "CORS_ORIGINS": "http://allowed.example",
         # досинхронизация превью раз в полсекунды и без задержки, чтобы тесты не ждали 30 секунд
         "CHAT_EVENT_RECONCILE_INTERVAL": "0.5",
         "CHAT_EVENT_RECONCILE_GRACE": "0",

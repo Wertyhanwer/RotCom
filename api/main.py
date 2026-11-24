@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 
 from logger.logger_config import setup_logging
@@ -28,12 +29,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="RotCom", lifespan=lifespan)
+# Фронтенд обращается к api через nginx с того же origin (/api), поэтому по умолчанию CORS
+# не разрешён никому. Раньше было allow_origins=["*"] вместе с allow_credentials=True: Starlette
+# в этом случае отражает любой Origin, и любой сайт мог делать запросы к api из браузера.
+# Авторизация идёт заголовком Authorization, а не куками, поэтому credentials не нужны.
+CORS_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 app.include_router(users_router)
 app.include_router(registration_router)
