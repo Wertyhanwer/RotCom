@@ -8,7 +8,7 @@ from schemas.jwt_token import TokenResponse
 from routers.service.hash import verify_hash
 from db.repository.user_repository import UserRepository
 from db.models import User
-from routers.service.JWT.access_token_create import create_access_token
+from services.auth_tokens import issue_token_pair
 
 router = APIRouter(prefix="/login", tags=["login"])
 
@@ -38,8 +38,7 @@ async def login_user(
     if not password_check(user, password):
         logger.info(f"Password does not match!: {login}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_access_token(user.id_)
-    return TokenResponse(access_token=token)
+    return await issue_token_pair(session, user.id_)
 
 def password_check(user: User, password: str) -> bool:
     return verify_hash(password_hash=user.password_hash, password=password)

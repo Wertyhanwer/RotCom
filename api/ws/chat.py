@@ -28,6 +28,8 @@ async def chat(websocket: WebSocket, token: str):
     # и стектрейс в логах), теперь соединение закрывается штатно с 1008 Policy Violation
     try:
         token_model: TokenPayloadModel = decode_token(token)
+        if token_model.type != "access":
+            raise ValueError("not an access token")
         current_user_id = int(token_model.sub)
     except Exception:
         logger.info("Ws connection closed! invalid token")

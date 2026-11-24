@@ -7,6 +7,7 @@ from dependencies import get_session_async
 from dependencies.auth import get_current_user
 from db.models.user import User
 from .auth.registration import register_user
+from services.auth_tokens import revoke_all_user_tokens
 
 import logging
 logger = logging.getLogger("messenger.users")
@@ -87,4 +88,5 @@ async def delete_user(
     user = await repo.delete_user_by_id(user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+    await revoke_all_user_tokens(session, user_id)
     return user

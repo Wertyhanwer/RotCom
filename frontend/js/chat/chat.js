@@ -55,11 +55,19 @@ function sendMsg() {
 }
 
 async function logout() {
-  // POST ${API}/auth/logout  ← раскомментить когда бэк будет готов
-  // await fetch(`${API}/auth/logout`, { method: 'POST', headers: authHeaders() })
+  // отзываем refresh-токен на сервере, иначе им можно было бы пользоваться ещё 30 дней
+  const refreshToken = localStorage.getItem('refresh_token')
+  if (refreshToken) {
+    await fetch(`${API}/auth/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    }).catch(() => {})
+  }
 
   if (ws) ws.close()
   localStorage.removeItem('token')
+  localStorage.removeItem('refresh_token')
   window.location.replace('/auth')
 }
 
@@ -113,6 +121,7 @@ async function init() {
 
   if (!meResponse.ok) {
     localStorage.removeItem('token')
+    localStorage.removeItem('refresh_token')
     window.location.href = '/auth'
     return
   }

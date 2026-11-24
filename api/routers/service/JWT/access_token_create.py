@@ -13,5 +13,5 @@ def create_access_token(user_id: int) -> str:
         exp=expire,
     )
 
-    token = jwt.encode(payload.model_dump(), SECRET_KEY, algorithm=ALGORITHM)
+    token = jwt.encode(payload.model_dump(exclude_none=True), SECRET_KEY, algorithm=ALGORITHM)
     return token

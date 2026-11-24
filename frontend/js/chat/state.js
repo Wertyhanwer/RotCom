@@ -1,4 +1,4 @@
-const token = localStorage.getItem('token')
+let token = localStorage.getItem('token')  // обновляется в api.js после refresh
 let currentUserId = null
 let ws = null
 let currentChatUserId = null
