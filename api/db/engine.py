@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from .configs.engine_config import db_url
+from .configs.engine_config import db_url, DB_ECHO
 import logging
 
 from db.exceptions import DatabaseError
@@ -37,7 +37,7 @@ class DBEngine:
         try:
             self._db_engine = create_async_engine(
                 self._db_url,
-                echo=True
+                echo=DB_ECHO,
             )
         except Exception as e:
             self._logger.critical(f"Critical error at _create_async_engine: {e}")

@@ -15,6 +15,9 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 if not DB_PASSWORD:
     raise RuntimeError("DB_PASSWORD is not set")
 
+# echo=True печатает каждый SQL-запрос с параметрами — только для отладки
+DB_ECHO = os.getenv("DB_ECHO", "false").lower() in ("1", "true", "yes")
+
 
 # URL.create сам экранирует спецсимволы в пароле (@, :, / и т.п.), которые ломали f-строку
 db_url = URL.create(

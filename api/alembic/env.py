@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 
-from db.configs.engine_config import db_url
+from db.configs.engine_config import db_url, DB_ECHO
 import asyncio
 
 # this is the Alembic Config object, which provides
@@ -56,7 +56,7 @@ async def run_migrations_online() -> None:
 
     engine = create_async_engine(
         url=db_url,
-        echo=True
+        echo=DB_ECHO,
     )
     async with engine.begin() as conn:
        await conn.run_sync(do_run_migrations)
