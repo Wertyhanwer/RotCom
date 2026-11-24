@@ -2,6 +2,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, or_, case
+from sqlalchemy.exc import IntegrityError
 
 from db.models.private_chat import PrivateChat
 from db.models.user import User
@@ -13,7 +14,13 @@ class PrivateChatRepository:
         self._logger = logging.getLogger("messenger.db")
 
     async def create(self, user_a: User , user_b: User) -> PrivateChat:
-        self._logger.info(f"Private chat create request {{user_a: {user_a}, user_b: {user_b}}}")
+        """Создаёт чат пары или возвращает существующий.
+
+        Между get_by_users() и create() другой запрос мог уже создать чат этой пары
+        (одновременные первые сообщения). Уникальный индекс uq_private_chats_users не даёт
+        вставить дубликат, а IntegrityError здесь означает «чат уже есть» — забираем его.
+        """
+        self._logger.info(f"Private chat create request {{user_a: {user_a.id_}, user_b: {user_b.id_}}}")
         user_id_1 = min(user_a.id_, user_b.id_)
         user_id_2 = max(user_a.id_, user_b.id_)
         try:
@@ -22,11 +29,25 @@ class PrivateChatRepository:
             await self._session.commit()
             await self._session.refresh(chat)
             return chat
+        except IntegrityError:
+            await self._session.rollback()
+            existing = await self._get_by_user_ids(user_id_1, user_id_2)
+            if existing is not None:
+                self._logger.info(f"Private chat already created concurrently {{chat_id: {existing.id_}}}")
+                return existing
+            raise DatabaseError(f"Error at creating private chat {{users: {user_id_1}/{user_id_2}}}")
         except Exception as e:
             self._logger.error(
-                f"Error at creating private chat {{user_a: {user_a}, user_b: {user_b}}}: {e}")
+                f"Error at creating private chat {{users: {user_id_1}/{user_id_2}}}: {e}")
             raise DatabaseError(
-                f"Error at creating private chat {{user_a: {user_a}, user_b: {user_b}}}: {e}") from e
+                f"Error at creating private chat {{users: {user_id_1}/{user_id_2}}}: {e}") from e
+
+    async def _get_by_user_ids(self, user_id_1: int, user_id_2: int) -> PrivateChat | None:
+        result = await self._session.execute(select(PrivateChat).where(
+            PrivateChat.user1_id == user_id_1,
+            PrivateChat.user2_id == user_id_2,
+        ))
+        return result.scalar_one_or_none()
 
 
     async def get_by_users(self, user_a: User , user_b: User) -> PrivateChat | None:

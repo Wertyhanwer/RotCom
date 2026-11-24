@@ -2,11 +2,17 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import func, ForeignKey, Text
+from sqlalchemy import func, ForeignKey, Text, UniqueConstraint, CheckConstraint, Index
 from .base import Base
 
 class PrivateChat(Base):
     __tablename__ = "private_chats"
+    __table_args__ = (
+        # одна пара пользователей — один чат; пара хранится упорядоченной (user1_id < user2_id)
+        UniqueConstraint("user1_id", "user2_id", name="uq_private_chats_users"),
+        CheckConstraint("user1_id < user2_id", name="ck_private_chats_user_order"),
+        Index("ix_private_chats_user2_id", "user2_id"),
+    )
 
     id_: Mapped[int] = mapped_column("id", primary_key=True)
     user1_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
