@@ -37,7 +37,7 @@ async def chat(websocket: WebSocket, token: str):
     async with get_session() as session:
         user_rep = UserRepository(session)
         current_user = await user_rep.get_by_id(current_user_id)
-        if not current_user:
+        if not current_user or current_user.is_deleted:
             logger.info(f"Ws connection closed! user {current_user_id} does not exist")
             await websocket.close(code=1008)
             return
@@ -65,7 +65,7 @@ async def chat(websocket: WebSocket, token: str):
                     private_chat_rep = PrivateChatRepository(session)
 
                     other_user = await user_rep.get_by_id(event.to_user_id)
-                    if not other_user:
+                    if not other_user or other_user.is_deleted:
                         await websocket.send_text(json.dumps({"error": "user not found"}))
                         continue
 

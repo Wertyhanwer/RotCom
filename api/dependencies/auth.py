@@ -22,6 +22,6 @@ async def get_current_user(
 
     user_id = int(payload.sub)
     user = await rep.get_by_id(user_id)  # тянет юзера из БД
-    if user is None:
-        raise HTTPException(401)
+    if user is None or user.is_deleted:
+        raise HTTPException(status_code=401, detail="Invalid token")
     return user

@@ -3,8 +3,11 @@ import logging
 from db.exceptions import DatabaseError, UniqueViolationError
 from db.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
+
+DELETED_USERNAME = "Удалённый пользователь"
+
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
@@ -45,7 +48,7 @@ class UserRepository:
         self._logger.info(f"Get user by email request {{email: {user_email} }}")
         try:
             result = await self._session.execute(
-                select(User).where(User.email == user_email)
+                select(User).where(User.email == user_email, User.deleted_at.is_(None))
             )
             user = result.scalar_one_or_none()
             return user
@@ -57,7 +60,7 @@ class UserRepository:
         self._logger.info(f"Get user by login request {{login: {login} }}")
         try:
             result = await self._session.execute(
-                select(User).where(User.login == login)
+                select(User).where(User.login == login, User.deleted_at.is_(None))
             )
             user = result.scalar_one_or_none()
             return user
@@ -81,14 +84,28 @@ class UserRepository:
             raise DatabaseError(f"Error at update user.name by id {{id: {user_id}, username: {new_username}  {user_id}: {e} }}") from e
 
     async def delete_user_by_id(self, user_id: int) -> User | None:
+        """Удаляет аккаунт через анонимизацию.
+
+        Строку users нельзя удалить физически: на неё ссылаются private_chats, а удаление чатов
+        стёрло бы переписку у собеседников. Поэтому персональные данные затираются, логин и email
+        освобождаются для новой регистрации, вход становится невозможен, а в чатах собеседников
+        аккаунт отображается как «Удалённый пользователь».
+        """
         self._logger.info(f"Delete user by id request {{id: {user_id}}}")
         try:
             user: User = await self.get_by_id(user_id)
-            if user is None:
+            if user is None or user.is_deleted:
                 return None
-            await self._session.delete(user)
+            user.username = DELETED_USERNAME
+            user.login = f"deleted_{user_id}"
+            user.email = f"deleted_{user_id}@deleted.invalid"
+            # не argon2-хеш: никакой пароль с ним не совпадёт
+            user.password_hash = "!"
+            user.deleted_at = func.now()
             await self._session.commit()
+            await self._session.refresh(user)
             return user
         except Exception as e:
+            await self._session.rollback()
             self._logger.error(f"Error at delete user by id {user_id}: {e}")
             raise DatabaseError(f"Error at delete user by id {user_id}: {e}") from e
