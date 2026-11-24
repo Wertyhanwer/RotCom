@@ -1,10 +1,22 @@
-function wsConnect() {
-  ws = new WebSocket(`ws://${location.host}/ws/?token=${token}`)
+let wsAuthRetried = false
 
-  ws.onopen = () => console.log('WS подключён')
+function wsConnect() {
+  // токен не кладём в URL: адрес WebSocket-рукопожатия попадает в логи nginx.
+  // Он уходит первым сообщением сразу после открытия соединения.
+  ws = new WebSocket(`ws://${location.host}/ws/`)
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'auth', token }))
+  }
 
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data)
+
+    if (msg.type === 'auth_ok') {
+      wsAuthRetried = false
+      console.log('WS подключён')
+      return
+    }
 
     if (msg.error) {
       console.log('WS ошибка:', msg.error)
@@ -31,5 +43,19 @@ function wsConnect() {
     refreshChatList()
   }
 
-  ws.onclose = () => console.log('WS отключён')
+  ws.onclose = async (event) => {
+    console.log('WS отключён')
+    // 1008 — сервер не принял токен (чаще всего истёк access-токен): обновляем пару и
+    // переподключаемся один раз; не получилось — сессия закончилась, на страницу входа
+    if (event.code === 1008 && !wsAuthRetried) {
+      wsAuthRetried = true
+      if (await refreshTokens()) {
+        wsConnect()
+      } else {
+        localStorage.removeItem('token')
+        localStorage.removeItem('refresh_token')
+        window.location.replace('/auth')
+      }
+    }
+  }
 }

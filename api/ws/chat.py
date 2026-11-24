@@ -1,5 +1,7 @@
+import asyncio
 import json
-from fastapi import APIRouter, WebSocket
+import os
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import TypeAdapter
 import logging
 
@@ -19,20 +21,44 @@ logger = logging.getLogger("messenger.ws")
 
 event_adapter = TypeAdapter(WsEvent)
 
+# сколько секунд после подключения клиент может не присылать auth-сообщение
+WS_AUTH_TIMEOUT = float(os.getenv("WS_AUTH_TIMEOUT", "10"))
+
+
+async def authenticate(websocket: WebSocket) -> int | None:
+    """Ждёт первое сообщение {"type": "auth", "token": "<access token>"} и возвращает user_id.
+
+    Токен передаётся сообщением, а не в URL (?token=...): строка запроса WebSocket-рукопожатия
+    попадает в access-логи nginx и прокси, а сообщения внутри соединения — нет.
+    Любая ошибка (таймаут, не auth-сообщение, битый/просроченный/refresh-токен) → None.
+    """
+    try:
+        raw = await asyncio.wait_for(websocket.receive_text(), timeout=WS_AUTH_TIMEOUT)
+        message = json.loads(raw)
+        if not isinstance(message, dict) or message.get("type") != "auth":
+            return None
+        token_model: TokenPayloadModel = decode_token(message["token"])
+        if token_model.type != "access":
+            return None
+        return int(token_model.sub)
+    except WebSocketDisconnect:
+        raise
+    except Exception:
+        return None
+
 
 @router.websocket("/")
-async def chat(websocket: WebSocket, token: str):
+async def chat(websocket: WebSocket):
     await websocket.accept()
 
     # битый/просроченный токен раньше ронял обработчик исключением (клиент получал 1011
     # и стектрейс в логах), теперь соединение закрывается штатно с 1008 Policy Violation
     try:
-        token_model: TokenPayloadModel = decode_token(token)
-        if token_model.type != "access":
-            raise ValueError("not an access token")
-        current_user_id = int(token_model.sub)
-    except Exception:
-        logger.info("Ws connection closed! invalid token")
+        current_user_id = await authenticate(websocket)
+    except WebSocketDisconnect:
+        return
+    if current_user_id is None:
+        logger.info("Ws connection closed! authentication failed")
         await websocket.close(code=1008)
         return
 
@@ -45,6 +71,7 @@ async def chat(websocket: WebSocket, token: str):
             return
 
     await connection_manager.connect(current_user.id_, websocket)
+    await websocket.send_text(json.dumps({"type": "auth_ok", "user_id": current_user.id_}))
     logger.info(f"Ws connected: user_id={current_user_id}")
 
     try:

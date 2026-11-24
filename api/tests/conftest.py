@@ -48,6 +48,8 @@ def _server_env() -> dict:
         "MONGO_USER": MONGO["user"], "MONGO_PASSWORD": MONGO["password"],
         "JWT_SECRET_KEY": "test-secret-key-that-is-long-enough-for-hs256",
         "PYTHONUTF8": "1",
+        # короткий таймаут, чтобы тест «нет auth-сообщения» не ждал 10 секунд
+        "WS_AUTH_TIMEOUT": "1",
     })
     return env
 

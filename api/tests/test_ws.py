@@ -7,8 +7,24 @@ from websockets.sync.client import connect
 from tests.conftest import auth
 
 
+def ws_open(ws_url):
+    """Соединение без аутентификации."""
+    return connect(ws_url, open_timeout=5, close_timeout=2)
+
+
 def ws_connect(ws_url, token):
-    return connect(f"{ws_url}?token={token}", open_timeout=5, close_timeout=2)
+    """Соединение + аутентификация первым сообщением (токен не передаётся в URL)."""
+    ws = ws_open(ws_url)
+    ws.send(json.dumps({"type": "auth", "token": token}))
+    reply = json.loads(ws.recv(timeout=5))
+    assert reply["type"] == "auth_ok", reply
+    return ws
+
+
+def assert_closed_with_policy_violation(ws):
+    with pytest.raises(ConnectionClosed) as exc:
+        ws.recv(timeout=5)
+    assert exc.value.rcvd.code == 1008
 
 
 def send_message(ws, to_user_id, content="hi"):
@@ -31,10 +47,32 @@ def test_message_is_delivered_and_saved(client, ws_url, make_user):
 
 @pytest.mark.parametrize("token", ["garbage", "a.b.c"])
 def test_invalid_token_closes_with_policy_violation(ws_url, token):
-    with ws_connect(ws_url, token) as ws:
-        with pytest.raises(ConnectionClosed) as exc:
-            ws.recv(timeout=5)
-    assert exc.value.rcvd.code == 1008
+    with ws_open(ws_url) as ws:
+        ws.send(json.dumps({"type": "auth", "token": token}))
+        assert_closed_with_policy_violation(ws)
+
+
+def test_token_in_query_string_is_not_accepted(ws_url, make_user):
+    """Токен в URL попадает в логи прокси, поэтому сервер его больше не читает."""
+    _, token = make_user("alice")
+    with connect(f"{ws_url}?token={token}", open_timeout=5, close_timeout=2) as ws:
+        # без auth-сообщения соединение закрывается по таймауту аутентификации
+        assert_closed_with_policy_violation(ws)
+
+
+def test_first_message_must_be_auth(ws_url, make_user):
+    bob, _ = make_user("bob")
+    with ws_open(ws_url) as ws:
+        send_message(ws, bob["id_"])
+        assert_closed_with_policy_violation(ws)
+
+
+def test_refresh_token_is_not_accepted_for_ws(client, ws_url, make_user):
+    make_user("alice")
+    tokens = client.post("/login/", data={"username": "alice", "password": "Str0ng-pass!"}).json()
+    with ws_open(ws_url) as ws:
+        ws.send(json.dumps({"type": "auth", "token": tokens["refresh_token"]}))
+        assert_closed_with_policy_violation(ws)
 
 
 def test_cannot_message_yourself(client, ws_url, make_user):
