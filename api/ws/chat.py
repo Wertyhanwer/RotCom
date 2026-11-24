@@ -86,4 +86,4 @@ async def chat(websocket: WebSocket, token: str):
             except Exception:
                 logger.warning(f"Ws delivery failed: from={current_user_id} to={event.to_user_id}")
     finally:
-        connection_manager.disconnect(current_user.id_)
+        connection_manager.disconnect(current_user.id_, websocket)
