@@ -154,7 +154,7 @@ def register(client: httpx.Client, login: str, password: str = PASSWORD) -> dict
 
 
 def get_token(client: httpx.Client, login: str, password: str = PASSWORD) -> str:
-    response = client.post("/login/", params={"login": login, "password": password})
+    response = client.post("/login/", data={"username": login, "password": password})
     assert response.status_code == 200, response.text
     return response.json()["access_token"]
 

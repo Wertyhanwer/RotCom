@@ -23,10 +23,11 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
   const login = document.getElementById('login-input').value
   const password = document.getElementById('login-password').value
 
-  const response = await fetch(
-    `${API}/login/?login=${encodeURIComponent(login)}&password=${encodeURIComponent(password)}`,
-    { method: 'POST' }
-  )
+  // OAuth2 password flow: данные в теле формы, а не в URL
+  const response = await fetch(`${API}/login/`, {
+    method: 'POST',
+    body: new URLSearchParams({ username: login, password })
+  })
 
   const data = await response.json()
 

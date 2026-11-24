@@ -8,7 +8,7 @@ from db.repository.user_repository import UserRepository
 from routers.service.JWT.token_decode import decode_token
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login/")
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),  # достаёт токен из заголовка
