@@ -54,6 +54,11 @@ async def chat(websocket: WebSocket, token: str):
                 await websocket.send_text(json.dumps({"error": "invalid message format"}))
                 continue
 
+            # иначе создавался приватный чат пользователя с самим собой (user1_id == user2_id)
+            if event.to_user_id == current_user.id_:
+                await websocket.send_text(json.dumps({"error": "cannot send events to yourself"}))
+                continue
+
             try:
                 async with get_session() as session:
                     user_rep = UserRepository(session)
