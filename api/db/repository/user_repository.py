@@ -1,9 +1,10 @@
 import logging
 
-from db.exceptions import DatabaseError
+from db.exceptions import DatabaseError, UniqueViolationError
 from db.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
@@ -18,6 +19,12 @@ class UserRepository:
             await self._session.commit()
             await self._session.refresh(user)
             return user
+        except IntegrityError as e:
+            # проверка в /registration и вставка не атомарны: параллельный запрос мог занять
+            # логин/email между ними — тогда срабатывает уникальный индекс в базе
+            await self._session.rollback()
+            self._logger.info(f"User already exists {{login: {login}, email: {email}}}")
+            raise UniqueViolationError(f"User with login {login} or email {email} already exists") from e
         except Exception as e:
             self._logger.error(f"Error at user creating {username}: {e}")
             raise DatabaseError(f"Error at user creating {username}") from e

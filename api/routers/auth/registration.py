@@ -6,6 +6,7 @@ from routers.service import hash_password
 from schemas.user import UserResponse, UserCreate
 from db.repository.user_repository import UserRepository
 from dependencies import get_session_async
+from db.exceptions import UniqueViolationError
 from .exceptions import UserAlreadyExistsError
 
 
@@ -28,6 +29,8 @@ async def register_user(data: UserCreate, session: AsyncSession = Depends(get_se
     try:
         _password = hash_password(data.password)
         new_user = await rep.create(data.username, data.login, data.email, _password)
+    except UniqueViolationError:
+        raise HTTPException(status_code=409, detail="User with this login or email already exists")
     except Exception as e:
         logger.critical(f"Something went wrong... {e}")
         raise RegistrationError(f"Something went wrong... {e}")
