@@ -5,6 +5,12 @@ services:
       - "${DB_EXTERNAL_PORT}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    # api при старте накатывает миграции, поэтому ждёт, пока Postgres начнёт принимать подключения
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   db_test:
     build: ./test_db
@@ -28,8 +34,10 @@ services:
     ports:
       - "${API_EXTERNAL_PORT}:8000"
     depends_on:
-      - db
-      - mongo
+      db:
+        condition: service_healthy
+      mongo:
+        condition: service_started
     env_file:
       - .env
 

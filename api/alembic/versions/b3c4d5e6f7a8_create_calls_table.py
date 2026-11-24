@@ -18,6 +18,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # таблица могла быть создана старым init-скриптом db/init/04-calls.sql
+    if 'calls' in sa.inspect(op.get_bind()).get_table_names():
+        return
     op.create_table(
         'calls',
         sa.Column('id', sa.Integer(), primary_key=True),
@@ -30,5 +33,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table('calls')
+    op.execute('DROP TABLE IF EXISTS calls')
     op.execute('DROP TYPE IF EXISTS callstatus')

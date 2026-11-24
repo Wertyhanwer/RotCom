@@ -8,8 +8,6 @@ ENV POSTGRES_DB=rotcom \
     POSTGRES_USER=user \
     POSTGRES_PASSWORD=12345
 
-WORKDIR /docker-entrypoint-initdb.d
-COPY ./init/*.sql ./
 
 EXPOSE 5432
 
