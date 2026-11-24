@@ -42,7 +42,11 @@ async def search_user_by_login(
 
 
 @router.get("/{user_id}", response_model=PublicUserResponse)
-async def get_user(user_id: int, session: AsyncSession = Depends(get_session_async)):
+async def get_user(
+    user_id: int,
+    _: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session_async),
+):
     repo = UserRepository(session)
     user = await repo.get_by_id(user_id)
     if user is None:
@@ -50,8 +54,21 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_session_asy
     return user
 
 
+def ensure_self(user_id: int, current_user: User):
+    """Менять и удалять можно только свой аккаунт."""
+    if current_user.id_ != user_id:
+        logger.warning(f"Forbidden user modification {{user_id: {user_id}, by: {current_user.id_}}}")
+        raise HTTPException(status_code=403, detail="You can modify only your own account")
+
+
 @router.patch("/{user_id}", response_model=UserResponse)
-async def update_username(user_id: int, data: UserUpdateUsername, session: AsyncSession = Depends(get_session_async)):
+async def update_username(
+    user_id: int,
+    data: UserUpdateUsername,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session_async),
+):
+    ensure_self(user_id, current_user)
     repo = UserRepository(session)
     user = await repo.update_username_by_user_id(user_id, data.username)
     if user is None:
@@ -60,7 +77,12 @@ async def update_username(user_id: int, data: UserUpdateUsername, session: Async
 
 
 @router.delete("/{user_id}", response_model=UserResponse)
-async def delete_user(user_id: int, session: AsyncSession = Depends(get_session_async)):
+async def delete_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session_async),
+):
+    ensure_self(user_id, current_user)
     repo = UserRepository(session)
     user = await repo.delete_user_by_id(user_id)
     if user is None:
