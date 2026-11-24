@@ -12,6 +12,7 @@ import os
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -121,13 +122,19 @@ def second_server(server):
     _stop(proc)
 
 
+# base_url сервера -> файл с его stderr (для тестов, проверяющих, что в лог не пишутся ошибки)
+SERVER_LOGS: dict[str, Path] = {}
+
+
 def _start_uvicorn(env: dict):
     port = _free_port()
+    log_path = Path(tempfile.gettempdir()) / f"rotcom_test_server_{port}.log"
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", str(port)],
-        cwd=API_DIR, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        cwd=API_DIR, env=env, stdout=subprocess.DEVNULL, stderr=open(log_path, "w", encoding="utf-8"),
     )
     base_url = f"http://127.0.0.1:{port}"
+    SERVER_LOGS[base_url] = log_path
     for _ in range(100):
         try:
             if httpx.get(f"{base_url}/openapi.json", timeout=1).status_code == 200:
@@ -144,6 +151,12 @@ def _start_uvicorn(env: dict):
 def _stop(proc):
     proc.terminate()
     proc.wait(timeout=10)
+
+
+@pytest.fixture
+def server_log(server) -> Path:
+    """Файл, куда пишется stderr основного тестового сервера."""
+    return SERVER_LOGS[server]
 
 
 @pytest.fixture(autouse=True)

@@ -114,5 +114,9 @@ async def chat(websocket: WebSocket):
                 await connection_manager.send_to(event.to_user_id, payload)
             except Exception:
                 logger.warning(f"Ws delivery failed: from={current_user_id} to={event.to_user_id}")
+    except WebSocketDisconnect:
+        # штатное закрытие клиентом (закрыл вкладку, вышел) — не ошибка; раньше исключение
+        # улетало в uvicorn и каждое отключение писало в лог "Exception in ASGI application"
+        logger.info(f"Ws disconnected: user_id={current_user_id}")
     finally:
         connection_manager.disconnect(current_user.id_, websocket)

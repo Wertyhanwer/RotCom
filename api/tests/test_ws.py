@@ -101,3 +101,15 @@ def test_closing_old_tab_keeps_new_tab_connected(ws_url, make_user):
         old_tab.close()
         send_message(alice_ws, bob["id_"], "still here?")
         assert json.loads(new_tab.recv(timeout=5))["content"] == "still here?"
+
+
+def test_client_disconnect_is_not_logged_as_error(server_log, ws_url, make_user):
+    import time
+    _, token = make_user("alice")
+    log_path = server_log
+    before = log_path.read_text(encoding="utf-8", errors="replace").count("Exception in ASGI application")
+    ws = ws_connect(ws_url, token)
+    ws.close()
+    time.sleep(0.5)
+    after = log_path.read_text(encoding="utf-8", errors="replace").count("Exception in ASGI application")
+    assert after == before
