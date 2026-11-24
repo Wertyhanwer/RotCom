@@ -19,6 +19,16 @@ services:
     profiles:
       - test
 
+  mongo_test:
+    image: mongo:8
+    ports:
+      - "${MONGO_TEST_EXTERNAL_PORT:-27019}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: rotcom
+      MONGO_INITDB_ROOT_PASSWORD: "12345"
+    profiles:
+      - test
+
   mongo:
     image: mongo:8
     ports:
