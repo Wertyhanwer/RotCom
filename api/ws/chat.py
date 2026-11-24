@@ -24,8 +24,15 @@ event_adapter = TypeAdapter(WsEvent)
 async def chat(websocket: WebSocket, token: str):
     await websocket.accept()
 
-    token_model: TokenPayloadModel = decode_token(token)
-    current_user_id = int(token_model.sub)
+    # битый/просроченный токен раньше ронял обработчик исключением (клиент получал 1011
+    # и стектрейс в логах), теперь соединение закрывается штатно с 1008 Policy Violation
+    try:
+        token_model: TokenPayloadModel = decode_token(token)
+        current_user_id = int(token_model.sub)
+    except Exception:
+        logger.info("Ws connection closed! invalid token")
+        await websocket.close(code=1008)
+        return
 
     async with get_session() as session:
         user_rep = UserRepository(session)
