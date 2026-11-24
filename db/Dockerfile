@@ -4,9 +4,7 @@ LABEL maintainer="konndann@mail.ru" \
       version="1.0" \
       description="RotCom DB"
 
-ENV POSTGRES_DB=rotcom \
-    POSTGRES_USER=user \
-    POSTGRES_PASSWORD=12345
+# POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD передаются из .env через docker-compose
 
 
 EXPOSE 5432

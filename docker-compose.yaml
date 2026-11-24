@@ -1,6 +1,10 @@
 services:
   db:
     build: ./db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-rotcom}
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set in .env}
     ports:
       - "${DB_EXTERNAL_PORT}:5432"
     volumes:
@@ -35,7 +39,7 @@ services:
       - "${MONGO_EXTERNAL_PORT}:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD is not set in .env}
     volumes:
       - mongo_data:/data/db
 

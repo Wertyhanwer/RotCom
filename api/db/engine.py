@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from .configs.engine_config import ip, user, password, port, dbname
+from .configs.engine_config import db_url
 import logging
 
 from db.exceptions import DatabaseError
@@ -28,7 +28,7 @@ class DBEngine:
 
 
     def _generate_db_url(self):
-        self._db_url = f"postgresql+asyncpg://{user}:{password}@{ip}:{port}/{dbname}"
+        self._db_url = db_url
 
     def _init_logger(self):
         self._logger = logging.getLogger("messenger.db")

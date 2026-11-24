@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 
-from db.configs.engine_config import ip, user, password, port, dbname
+from db.configs.engine_config import db_url
 import asyncio
 
 # this is the Alembic Config object, which provides
@@ -35,7 +35,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url")
+    url = db_url.render_as_string(hide_password=False)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -55,7 +55,7 @@ async def run_migrations_online() -> None:
             context.run_migrations()
 
     engine = create_async_engine(
-        url=f"postgresql+asyncpg://{user}:{password}@{ip}:{port}/{dbname}",
+        url=db_url,
         echo=True
     )
     async with engine.begin() as conn:
