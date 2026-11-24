@@ -6,7 +6,7 @@ from schemas.user import UserCreate, UserUpdateUsername, UserResponse, PublicUse
 from dependencies import get_session_async
 from dependencies.auth import get_current_user
 from db.models.user import User
-from .service import hash_password
+from .auth.registration import register_user
 
 import logging
 logger = logging.getLogger("messenger.users")
@@ -17,10 +17,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.post("/", response_model=UserResponse, status_code=201)
 async def create_user(data: UserCreate, session: AsyncSession = Depends(get_session_async)):
     logger.info(f"Create user request {{username: {data.username}, login: {data.login}}}")
-    repo = UserRepository(session)
-    password_hash = hash_password(data.password)
-    user = await repo.create(data.username, data.email, password_hash)
-    return user
+    # та же логика, что у /registration: проверка уникальности email/login и хеширование пароля
+    return await register_user(data, session)
 
 
 @router.get("/me", response_model=UserResponse)
