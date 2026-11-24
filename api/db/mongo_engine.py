@@ -37,6 +37,10 @@ class MongoEngine:
     async def create_indexes(self):
         # история чата всегда читается по chat_id с сортировкой по _id (курсорная пагинация)
         await self._db.chat_events.create_index([("chat_id", ASCENDING), ("_id", DESCENDING)])
+        # частичный индекс только по недоприменённым событиям — для досинхронизации превью
+        await self._db.chat_events.create_index(
+            [("created_at", ASCENDING)], name="pending_outbox",
+            partialFilterExpression={"outbox": {"$exists": True}})
 
     async def close(self):
         await self._client.close()

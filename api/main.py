@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from logger.logger_config import setup_logging
@@ -8,6 +9,8 @@ from routers import users_router, registration_router, loging_router, private_ch
     auth_tokens_router
 from ws import ws_chat_router
 from ws.connection_manager import connection_manager
+from dependencies.db import get_session
+from services.chat_events import run_reconciler
 
 setup_logging()
 
@@ -17,7 +20,9 @@ async def lifespan(app: FastAPI):
     mongo = MongoEngine()
     await mongo.create_indexes()
     await connection_manager.start()
+    reconciler = asyncio.create_task(run_reconciler(get_session, mongo.get_db()))
     yield
+    reconciler.cancel()
     await connection_manager.stop()
     await mongo.close()
 

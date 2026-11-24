@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, or_, case
@@ -96,14 +97,19 @@ class PrivateChatRepository:
             self._logger.error(f"Error at requesting private chat {{chat_id: {chat_id}, user_id: {user_id}}}: {e}")
             raise DatabaseError(f"Error at requesting private chat {{chat_id: {chat_id}, user_id: {user_id}}}") from e
 
-    async def update_last_event(self, chat_id: int, last_message: str):
-        """Без commit — коммитит вызывающий (services/chat_events.py), чтобы откатить при ошибке записи в Mongo."""
+    async def update_last_event(self, chat_id: int, last_message: str, event_time: datetime):
+        """Превью чата по событию. Без commit — коммитит services/chat_events.py.
+
+        Монотонно: обновляет, только если событие не старше текущего превью (или превью ещё нет),
+        поэтому повторная или запоздалая досинхронизация не затирает более свежее сообщение.
+        """
         self._logger.info(f"Private chat last event update request {{chat_id: {chat_id}}}")
         try:
             await self._session.execute(
                 update(PrivateChat)
-                .where(PrivateChat.id_ == chat_id)
-                .values(last_event_at=func.now(), last_message=last_message)
+                .where(PrivateChat.id_ == chat_id,
+                       or_(PrivateChat.last_message.is_(None), PrivateChat.last_event_at <= event_time))
+                .values(last_event_at=event_time, last_message=last_message)
             )
         except Exception as e:
             self._logger.error(f"Error at updating private chat last event {{chat_id: {chat_id}}}: {e}")

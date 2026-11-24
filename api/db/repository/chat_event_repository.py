@@ -25,13 +25,16 @@ class ChatEventRepository:
             self._logger.error(f"Error at creating chat event {{chat_id: {document.get('chat_id')}}}: {e}")
             raise DatabaseError(f"Error at creating chat event {{chat_id: {document.get('chat_id')}}}") from e
 
-    async def delete_by_id(self, event_id: ObjectId):
-        self._logger.info(f"Chat event delete request {{id: {event_id}}}")
-        try:
-            await self._collection.delete_one({"_id": event_id})
-        except Exception as e:
-            self._logger.error(f"Error at deleting chat event {{id: {event_id}}}: {e}")
-            raise DatabaseError(f"Error at deleting chat event {{id: {event_id}}}") from e
+    async def mark_projected(self, event_id: ObjectId):
+        """Превью в Postgres обновлено — снимаем отметку outbox."""
+        await self._collection.update_one({"_id": event_id}, {"$unset": {"outbox": ""}})
+
+    async def find_pending(self, older_than, limit: int = 100) -> list[dict]:
+        """События, превью которых ещё не применено к Postgres (сбой между записью в две базы)."""
+        cursor = self._collection.find(
+            {"outbox": {"$exists": True}, "created_at": {"$lt": older_than}}
+        ).sort("created_at", 1).limit(limit)
+        return await cursor.to_list()
 
     async def get_history(self, chat_id: int, limit: int = 50, before: ObjectId | None = None,
                           event_type: str | None = None) -> list[dict]:
