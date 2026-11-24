@@ -1,7 +1,7 @@
 """Интеграционные тесты: настоящий uvicorn поверх тестовых Postgres и Mongo.
 
 Перед запуском нужны тестовые базы:
-    docker compose --profile test up -d db_test mongo_test
+    docker compose --profile test up -d db_test mongo_test redis_test
 
 Параметры подключения берутся из TEST_* переменных окружения (значения по умолчанию
 совпадают с test_db/Dockerfile и сервисом mongo_test в docker-compose.yaml).
@@ -36,6 +36,7 @@ MONGO = {
     "user": os.getenv("TEST_MONGO_USER", "rotcom"),
     "password": os.getenv("TEST_MONGO_PASSWORD", "12345"),
 }
+REDIS_URL = os.getenv("TEST_REDIS_URL", "redis://localhost:6380/0")
 PASSWORD = "Str0ng-pass!"
 
 
@@ -50,6 +51,7 @@ def _server_env() -> dict:
         "PYTHONUTF8": "1",
         # короткий таймаут, чтобы тест «нет auth-сообщения» не ждал 10 секунд
         "WS_AUTH_TIMEOUT": "1",
+        "REDIS_URL": REDIS_URL,
     })
     return env
 
@@ -102,6 +104,20 @@ def server():
     subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"],
                    cwd=API_DIR, env=env, check=True, capture_output=True)
 
+    proc, base_url = _start_uvicorn(env)
+    yield base_url
+    _stop(proc)
+
+
+@pytest.fixture(scope="session")
+def second_server(server):
+    """Второй независимый процесс api на тех же базах и том же Redis — как вторая реплика."""
+    proc, base_url = _start_uvicorn(_server_env())
+    yield base_url
+    _stop(proc)
+
+
+def _start_uvicorn(env: dict):
     port = _free_port()
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", str(port)],
@@ -111,18 +127,17 @@ def server():
     for _ in range(100):
         try:
             if httpx.get(f"{base_url}/openapi.json", timeout=1).status_code == 200:
-                break
+                return proc, base_url
         except httpx.HTTPError:
             pass
         if proc.poll() is not None:
             raise RuntimeError("uvicorn exited during startup")
         time.sleep(0.2)
-    else:
-        proc.kill()
-        raise RuntimeError("uvicorn did not start")
+    proc.kill()
+    raise RuntimeError("uvicorn did not start")
 
-    yield base_url
 
+def _stop(proc):
     proc.terminate()
     proc.wait(timeout=10)
 

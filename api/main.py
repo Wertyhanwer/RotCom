@@ -7,6 +7,7 @@ from db.mongo_engine import MongoEngine
 from routers import users_router, registration_router, loging_router, private_chats_router, calls_router, \
     auth_tokens_router
 from ws import ws_chat_router
+from ws.connection_manager import connection_manager
 
 setup_logging()
 
@@ -15,7 +16,9 @@ setup_logging()
 async def lifespan(app: FastAPI):
     mongo = MongoEngine()
     await mongo.create_indexes()
+    await connection_manager.start()
     yield
+    await connection_manager.stop()
     await mongo.close()
 
 
